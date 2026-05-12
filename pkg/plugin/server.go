@@ -159,11 +159,11 @@ func (p *MobilintDevicePlugin) refreshDevices() {
 	newSig := deviceSignature(devices)
 
 	p.mu.Lock()
-	oldSig := deviceSignature(p.devices)
+	changed := deviceSignature(p.devices) != newSig
 	p.devices = devices
 	p.mu.Unlock()
 
-	if oldSig != newSig {
+	if changed {
 		select {
 		case p.healthCh <- struct{}{}:
 		default:

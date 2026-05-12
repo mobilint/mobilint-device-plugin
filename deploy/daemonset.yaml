@@ -25,6 +25,10 @@ spec:
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
+          ports:
+            - name: metrics
+              containerPort: 9400
+              protocol: TCP
           resources:
             requests:
               cpu: 50m
@@ -32,6 +36,17 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            periodSeconds: 30
+            failureThreshold: 3
           volumeMounts:
             - name: device-plugin
               mountPath: /var/lib/kubelet/device-plugins

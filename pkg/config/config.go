@@ -10,4 +10,6 @@ const (
 	RegisterTimeoutSeconds   = 5
 	RegisterRetrySeconds     = 30
 	RegisterMaxAttempts      = 5
+
+	MetricsAddr = ":9400"
 )
