@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: mobilint-device-plugin
+  namespace: kube-system
+  labels:
+    app: mobilint-device-plugin
+spec:
+  selector:
+    matchLabels:
+      app: mobilint-device-plugin
+  template:
+    metadata:
+      labels:
+        app: mobilint-device-plugin
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists
+      nodeSelector:
+        mobilint.com/npu.present: "true"
+      containers:
+        - name: mobilint-device-plugin
+          image: mobilint-device-plugin:v0.1.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: dev
+              mountPath: /dev
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+            type: Directory
+        - name: dev
+          hostPath:
+            path: /dev
+            type: Directory
