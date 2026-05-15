@@ -32,7 +32,7 @@ func DiscoverDevices() []*pluginapi.Device {
 			Health: health,
 		})
 
-		klog.Infof("discovered device id=%s path=%s health=%s", id, path, health)
+		klog.V(2).Infof("discovered device id=%s path=%s health=%s", id, path, health)
 	}
 
 	return devices

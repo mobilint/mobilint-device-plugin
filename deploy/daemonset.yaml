@@ -5,6 +5,11 @@ metadata:
   namespace: kube-system
   labels:
     app: mobilint-device-plugin
+    app.kubernetes.io/name: mobilint-device-plugin
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/component: device-plugin
+    app.kubernetes.io/part-of: mobilint-platform
+    app.kubernetes.io/managed-by: kubectl
 spec:
   selector:
     matchLabels:
@@ -13,6 +18,11 @@ spec:
     metadata:
       labels:
         app: mobilint-device-plugin
+        app.kubernetes.io/name: mobilint-device-plugin
+        app.kubernetes.io/version: "0.1.0"
+        app.kubernetes.io/component: device-plugin
+        app.kubernetes.io/part-of: mobilint-platform
+        app.kubernetes.io/managed-by: kubectl
     spec:
       priorityClassName: system-node-critical
       tolerations:
@@ -21,10 +31,17 @@ spec:
         mobilint.com/npu.present: "true"
       containers:
         - name: mobilint-device-plugin
-          image: mobilint-device-plugin:v0.1.0
+          image: mobilint-device-plugin:v0.1.0 # TODO: change this to registry before production
           imagePullPolicy: IfNotPresent
           securityContext:
-            privileged: true
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - name: metrics
               containerPort: 9400
@@ -36,22 +53,12 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: metrics
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: metrics
-            periodSeconds: 30
-            failureThreshold: 3
           volumeMounts:
             - name: device-plugin
               mountPath: /var/lib/kubelet/device-plugins
             - name: dev
               mountPath: /dev
+              readOnly: true
       volumes:
         - name: device-plugin
           hostPath:

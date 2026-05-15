@@ -97,7 +97,7 @@ func runRegister(ctx context.Context, stop context.CancelFunc, p *plugin.Mobilin
 				return
 			}
 
-			//when kubelet socket recreated
+			// When kubelet socket is recreated, re-register the plugin.
 			if event.Op&fsnotify.Create != 0 && filepath.Base(event.Name) == kubeletSock {
 				klog.Infof("kubelet socket recreated, re-registering")
 				if err := registerWithRetry(ctx, p); err != nil {
@@ -121,23 +121,23 @@ func registerWithRetry(ctx context.Context, p *plugin.MobilintDevicePlugin) erro
 	defer ticker.Stop()
 
 	for attempt := 1; attempt <= config.RegisterMaxAttempts; attempt++ {
-		if err := p.Register(ctx); err == nil {
-			klog.Infof("registered %s with kubelet", config.ResourceName)
-			return nil
-		} else {
+		if err := p.Register(ctx); err != nil {
 			klog.Errorf("register attempt %d/%d failed: %v", attempt, config.RegisterMaxAttempts, err)
+			if attempt == config.RegisterMaxAttempts {
+				break
+			}
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-ticker.C:
+			}
+
+			continue
 		}
 
-		if attempt >= config.RegisterMaxAttempts {
-			break
-		}
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-
-		case <-ticker.C:
-		}
+		klog.Infof("registered %s with kubelet", config.ResourceName)
+		return nil
 	}
 	return fmt.Errorf("register exhausted after %d attempts", config.RegisterMaxAttempts)
 }

@@ -13,14 +13,10 @@ import (
 	"mobilint-device-plugin/pkg/plugin/aries"
 )
 
-// NewHandler returns an http.Handler serving /metrics and /healthz.
+// NewHandler returns an http.Handler serving /metrics.
 func NewHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/metrics", handleMetrics)
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "ok")
-	})
 	return mux
 }
 
