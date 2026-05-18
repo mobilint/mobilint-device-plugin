@@ -31,21 +31,21 @@ spec:
         mobilint.com/npu.present: "true"
       containers:
         - name: mobilint-device-plugin
-          image: mobilint-device-plugin:v0.1.0 # TODO: change this to registry before production
+          image: mobilint-device-plugin:v0.1.0 # TODO: Use a registry image pinned by digest when production
           imagePullPolicy: IfNotPresent
           securityContext:
-            privileged: false
-            allowPrivilegeEscalation: false
+            privileged: true
             readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-            seccompProfile:
-              type: RuntimeDefault
           ports:
             - name: metrics
               containerPort: 9400
               protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: metrics
+            periodSeconds: 5
+            failureThreshold: 1
           resources:
             requests:
               cpu: 50m
@@ -56,15 +56,8 @@ spec:
           volumeMounts:
             - name: device-plugin
               mountPath: /var/lib/kubelet/device-plugins
-            - name: dev
-              mountPath: /dev
-              readOnly: true
       volumes:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
-            type: Directory
-        - name: dev
-          hostPath:
-            path: /dev
             type: Directory

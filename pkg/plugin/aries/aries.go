@@ -1,7 +1,3 @@
-// Package aries provides ioctl-based interaction with the Aries NPU driver.
-//
-// ABI source: aries_driver_ioctl.h (driver v1.10.0, IOCTL rev 1).
-// Only the subset needed by the device plugin and metrics endpoint is mirrored here.
 package aries
 
 import (
@@ -47,7 +43,7 @@ const (
 
 // Sample is one snapshot of metric values for a single device.
 // Values are raw integers returned by their respective ioctls; unit conversions
-// (mW→W, Hz→MHz 등) are left to consumers / PromQL.
+// (mW→W, Hz→MHz) are left to consumers / PromQL.
 type Sample struct {
 	Temperature  int32
 	ClockNPUHz   int32
@@ -59,10 +55,8 @@ type Sample struct {
 	FDCount      int32
 }
 
-// IsHealthy opens the device node and verifies the aries driver responds to
-// ARIES_IOC_DRIVER_INFO. Returns nil on success.
 func IsHealthy(path string) error {
-	fd, err := unix.Open(path, unix.O_RDWR, 0)
+	fd, err := unix.Open(path, unix.O_RDONLY, 0)
 	if err != nil {
 		return fmt.Errorf("open %s: %w", path, err)
 	}
@@ -72,9 +66,8 @@ func IsHealthy(path string) error {
 }
 
 // ReadSample issues DRIVER_INFO (as health gate) then reads all metric ioctls.
-// Returns an error if DRIVER_INFO or any of the metric ioctls fails.
 func ReadSample(path string) (Sample, error) {
-	fd, err := unix.Open(path, unix.O_RDWR, 0)
+	fd, err := unix.Open(path, unix.O_RDONLY, 0)
 	if err != nil {
 		return Sample{}, fmt.Errorf("open %s: %w", path, err)
 	}
@@ -109,6 +102,7 @@ func ReadSample(path string) (Sample, error) {
 	return s, nil
 }
 
+// TODO(further): change ioctl logic to mbltml, should be real health check
 func driverInfoCheck(fd int) error {
 	var buf [sizeofDriverInfo]byte
 	_, _, errno := unix.Syscall(

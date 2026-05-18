@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -31,8 +30,12 @@ func main() {
 	defer p.Stop()
 
 	metricsSrv := &http.Server{
-		Addr:    config.MetricsAddr,
-		Handler: metrics.NewHandler(),
+		Addr:              config.MetricsAddr,
+		Handler:           metrics.NewHandler(p.IsRegistered),
+		ReadHeaderTimeout: time.Duration(config.MetricsReadHeaderTimeoutSeconds) * time.Second,
+		ReadTimeout:       time.Duration(config.MetricsReadTimeoutSeconds) * time.Second,
+		WriteTimeout:      time.Duration(config.MetricsWriteTimeoutSeconds) * time.Second,
+		IdleTimeout:       time.Duration(config.MetricsIdleTimeoutSeconds) * time.Second,
 	}
 	go func() {
 		klog.Infof("metrics server listening addr=%s", config.MetricsAddr)
@@ -79,11 +82,7 @@ func runRegister(ctx context.Context, stop context.CancelFunc, p *plugin.Mobilin
 		return
 	}
 
-	if err := registerWithRetry(ctx, p); err != nil {
-		klog.Errorf("initial registration aborted: %v", err)
-		stop()
-		return
-	}
+	registerWithBackoff(ctx, p)
 
 	kubeletSock := filepath.Base(pluginapi.KubeletSocket)
 
@@ -100,11 +99,8 @@ func runRegister(ctx context.Context, stop context.CancelFunc, p *plugin.Mobilin
 			// When kubelet socket is recreated, re-register the plugin.
 			if event.Op&fsnotify.Create != 0 && filepath.Base(event.Name) == kubeletSock {
 				klog.Infof("kubelet socket recreated, re-registering")
-				if err := registerWithRetry(ctx, p); err != nil {
-					klog.Errorf("re-registration aborted: %v", err)
-					stop()
-					return
-				}
+				p.SetRegistered(false)
+				registerWithBackoff(ctx, p)
 			}
 
 		case err, ok := <-watcher.Errors:
@@ -116,28 +112,37 @@ func runRegister(ctx context.Context, stop context.CancelFunc, p *plugin.Mobilin
 	}
 }
 
-func registerWithRetry(ctx context.Context, p *plugin.MobilintDevicePlugin) error {
-	ticker := time.NewTicker(time.Duration(config.RegisterRetrySeconds) * time.Second)
-	defer ticker.Stop()
+// registerWithBackoff retries Register() forever with exponential backoff,
+// returning only when ctx is canceled. The Pod's /readyz reflects current
+// registration state, so a never-ready Pod surfaces as "NotReady" instead
+// of crashing into CrashLoopBackoff.
+func registerWithBackoff(ctx context.Context, p *plugin.MobilintDevicePlugin) {
+	backoff := time.Duration(config.RegisterBackoffInitialSeconds) * time.Second
+	maxBackoff := time.Duration(config.RegisterBackoffMaxSeconds) * time.Second
+	attempts := 0
 
-	for attempt := 1; attempt <= config.RegisterMaxAttempts; attempt++ {
-		if err := p.Register(ctx); err != nil {
-			klog.Errorf("register attempt %d/%d failed: %v", attempt, config.RegisterMaxAttempts, err)
-			if attempt == config.RegisterMaxAttempts {
-				break
+	for {
+		if err := p.Register(ctx); err == nil {
+			klog.Infof("registered %s with kubelet", config.ResourceName)
+			p.SetRegistered(true)
+			return
+		} else {
+			attempts++
+			if attempts >= config.RegisterFailureLogThreshold {
+				klog.Errorf("register failing (attempt %d, retrying every %s): %v", attempts, backoff, err)
+			} else {
+				klog.Warningf("register attempt %d failed, retry in %s: %v", attempts, backoff, err)
 			}
-
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-ticker.C:
-			}
-
-			continue
 		}
 
-		klog.Infof("registered %s with kubelet", config.ResourceName)
-		return nil
+		timer := time.NewTimer(backoff)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
+
+		backoff = min(backoff*2, maxBackoff)
 	}
-	return fmt.Errorf("register exhausted after %d attempts", config.RegisterMaxAttempts)
 }

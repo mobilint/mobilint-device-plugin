@@ -28,7 +28,9 @@ func (p *MobilintDevicePlugin) Start() error {
 		return err
 	}
 
-	p.setDevices(DiscoverDevices())
+	devices := DiscoverDevices()
+	p.setDevices(devices)
+	klog.Infof("discovered devices: %s", deviceSignature(devices))
 
 	p.server = grpc.NewServer()
 	pluginapi.RegisterDevicePluginServer(p.server, p)
@@ -164,6 +166,7 @@ func (p *MobilintDevicePlugin) refreshDevices() {
 	p.mu.Unlock()
 
 	if changed {
+		klog.Infof("device list changed: %s", newSig)
 		select {
 		case p.healthCh <- struct{}{}:
 		default:
@@ -181,6 +184,10 @@ func (p *MobilintDevicePlugin) sendDevices(stream pluginapi.DevicePlugin_ListAnd
 }
 
 func deviceSignature(devices []*pluginapi.Device) string {
+	if len(devices) == 0 {
+		return "none"
+	}
+
 	keys := make([]string, len(devices))
 	for i, d := range devices {
 		keys[i] = d.ID + "=" + d.Health
