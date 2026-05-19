@@ -54,9 +54,10 @@ The NPU count should be printed (`1`, `2`, ...).
 
 ### 3) Run the test Pod
 
-`deploy/test-pod.yaml` is a minimal Pod that requests one NPU.
+`deploy/test-pod.yaml` is a minimal Pod that requests one NPU and uses the test image from `deploy/test.Dockerfile`.
 
 ```bash
+docker build -f deploy/test.Dockerfile -t mobilint-npu-test:v0.1.0 .
 kubectl apply -f deploy/test-pod.yaml
 kubectl wait --for=condition=Ready pod/mobilint-npu-test --timeout=60s
 kubectl logs mobilint-npu-test
