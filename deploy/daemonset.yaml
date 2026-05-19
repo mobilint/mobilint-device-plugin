@@ -31,8 +31,8 @@ spec:
         mobilint.com/npu.present: "true"
       containers:
         - name: mobilint-device-plugin
-          image: ghcr.io/mobilint/mobilint-device-plugin:v0.1.0 # XXX: pin by digest when production
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/mobilint/mobilint-device-plugin:latest
+          imagePullPolicy: Always
           securityContext:
             privileged: true
             readOnlyRootFilesystem: true
