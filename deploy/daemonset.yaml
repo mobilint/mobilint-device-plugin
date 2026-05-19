@@ -31,7 +31,7 @@ spec:
         mobilint.com/npu.present: "true"
       containers:
         - name: mobilint-device-plugin
-          image: mobilint-device-plugin:v0.1.0 # XXX: Use a registry image pinned by digest when production
+          image: ghcr.io/mobilint/mobilint-device-plugin:v0.1.0 # XXX: pin by digest when production
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
