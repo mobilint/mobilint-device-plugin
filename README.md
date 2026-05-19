@@ -58,6 +58,8 @@ The NPU count should be printed (`1`, `2`, ...).
 
 ```bash
 docker build -f deploy/test.Dockerfile -t mobilint-npu-test:v0.1.0 .
+# Load into your cluster (k3s example; for other runtimes use ctr -n k8s.io / kind load / minikube image load)
+docker save mobilint-npu-test:v0.1.0 | sudo k3s ctr images import -
 kubectl apply -f deploy/test-pod.yaml
 kubectl wait --for=condition=Ready pod/mobilint-npu-test --timeout=60s
 kubectl logs mobilint-npu-test

@@ -58,8 +58,9 @@ NPU 개수가 출력돼야 합니다(`1`, `2`, ...).
 
 ```bash
 docker build -f deploy/test.Dockerfile -t mobilint-npu-test:v0.1.0 .
+# 클러스터에 적재 (k3s 예시; 그 외 runtime은 ctr -n k8s.io / kind load / minikube image load)
+docker save mobilint-npu-test:v0.1.0 | sudo k3s ctr images import -
 kubectl apply -f deploy/test-pod.yaml
-kubectl wait --for=condition=Ready pod/mobilint-npu-test --timeout=60s
 kubectl logs mobilint-npu-test
 ```
 
