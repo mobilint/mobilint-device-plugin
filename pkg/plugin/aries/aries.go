@@ -102,7 +102,7 @@ func ReadSample(path string) (Sample, error) {
 	return s, nil
 }
 
-// TODO(further): change ioctl logic to mbltml, should be real health check
+// XXX: change ioctl logic to mbltml, should be real health check
 func driverInfoCheck(fd int) error {
 	var buf [sizeofDriverInfo]byte
 	_, _, errno := unix.Syscall(

@@ -1,3 +1,4 @@
+# For other base images, see docs.mobilint.com for SDK installation steps.
 FROM ubuntu:22.04
 
 RUN apt-get update && \
