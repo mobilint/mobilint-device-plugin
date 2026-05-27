@@ -1,0 +1,29 @@
+# Generated from chart by make manifests. DO NOT EDIT.
+---
+# Source: mobilint-device-plugin/templates/nodefeaturerule.yaml
+# Requires Node Feature Discovery (NFD) in the cluster, and nfd-master must allow
+# the mobilint.com label namespace (flag: -extra-label-ns=mobilint.com).
+apiVersion: nfd.k8s-sigs.io/v1alpha1
+kind: NodeFeatureRule
+metadata:
+  name: mobilint-device-plugin
+  labels:
+    helm.sh/chart: mobilint-device-plugin-0.1.0
+    app.kubernetes.io/name: mobilint-device-plugin
+    app.kubernetes.io/instance: mobilint-device-plugin
+    app.kubernetes.io/version: "v0.1.0"
+    app.kubernetes.io/component: device-plugin
+    app.kubernetes.io/part-of: mobilint-platform
+    app.kubernetes.io/managed-by: Helm
+spec:
+  rules:
+    - name: mobilint-npu
+      labels:
+        mobilint.com/npu.present: "true"
+      matchFeatures:
+        - feature: pci.device
+          matchExpressions:
+            vendor:
+              op: In
+              value:
+                - "209f"

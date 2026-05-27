@@ -1,1 +1,17 @@
+# secrets
 .env
+.env.*
+
+# Helm packaging artifacts
+*.tgz
+charts/*/charts/
+charts/*/Chart.lock
+
+# Local Helm overrides
+values.local.yaml
+values.*.local.yaml
+
+# Go build / test
+/bin/
+*.out
+coverage.txt

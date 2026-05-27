@@ -30,10 +30,37 @@ ls /dev/aries*               # 디바이스 노드 존재 확인
 kubectl label node <NODE_NAME> mobilint.com/npu.present=true --overwrite
 ```
 
-### 2. DaemonSet 배포
+노드가 많거나 오토스케일링 환경이면 수동 라벨링 대신 Node Feature Discovery로 자동화할 수 있습니다 — [NFD로 자동 노드 라벨링](#nfd로-자동-노드-라벨링-선택) 참고.
+
+### 2. 플러그인 배포
+
+**Helm 사용 (권장):**
+```bash
+helm install mobilint-device-plugin \
+  oci://ghcr.io/mobilint/charts/mobilint-device-plugin --version 0.1.0 -n kube-system
+```
+설정 가능한 옵션(이미지 태그, metrics Service/ServiceMonitor, NetworkPolicy, kubelet 경로 등)은 [chart/values.yaml](chart/values.yaml) 참고. 로컬 체크아웃에서는 `oci://` URL 대신 `./chart`를 쓰면 됩니다.
+
+**Helm 없이:**
+```bash
+kubectl apply -f https://raw.githubusercontent.com/mobilint/mobilint-device-plugin/master/deploy/daemonset.yaml
+```
+
+> `deploy/*.yaml`은 Helm 차트에서 생성됩니다(`make manifests`) — 이 파일이 아니라 차트를 수정하세요.
+
+## NFD로 자동 노드 라벨링 (선택)
+
+수동 라벨링 대신 [NFD](https://github.com/kubernetes-sigs/node-feature-discovery)를 사용해 NPU가 있는 노드에 `mobilint.com/npu.present=true`를 자동으로 붙일 수 있습니다.
 
 ```bash
-kubectl apply -f deploy/daemonset.yaml
+# 1. NFD 설치 (NodeFeatureRule CRD 제공), mobilint.com 라벨 네임스페이스 허용
+helm repo add nfd https://kubernetes-sigs.github.io/node-feature-discovery/charts
+helm install nfd nfd/node-feature-discovery -n node-feature-discovery --create-namespace \
+  --set master.extraLabelNs={mobilint.com}
+
+# 2. 이 차트에서 자동 라벨링 켜기
+helm install mobilint-device-plugin oci://ghcr.io/mobilint/charts/mobilint-device-plugin \
+  --version 0.1.0 -n kube-system --set nodeFeatureDiscovery.enabled=true
 ```
 
 ## 검증
@@ -52,41 +79,46 @@ kubectl get node <NODE_NAME> -o jsonpath='{.status.allocatable.mobilint\.com/npu
 ```
 NPU 개수가 출력돼야 합니다(`1`, `2`, ...).
 
-### 3) 테스트 Pod 실행
+## Pod에서 NPU 사용
 
-`deploy/test-pod.yaml`은 NPU 1개를 요청하는 최소 Pod입니다.
+`resources.limits`에 `mobilint.com/npu`를 요청합니다:
 
-```bash
-kubectl apply -f deploy/test-pod.yaml
-kubectl wait --for=condition=Ready pod/mobilint-npu-test --timeout=60s
-kubectl logs mobilint-npu-test
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: npu-example
+spec:
+  containers:
+    - name: app
+      image: ubuntu:latest
+      command: ["sh", "-c", "echo $MOBILINT_VISIBLE_DEVICES; ls -l /dev/aries*; sleep infinity"]
+      resources:
+        limits:
+          mobilint.com/npu: 1
 ```
 
-정상 출력 예 (실 SDK 포함 이미지 사용 시):
-```
-MOBILINT_VISIBLE_DEVICES=aries0
-crw-rw-rw- 1 root root 503, 0 ... /dev/aries0
-mobilint-cli        1.2.0
-mobilint-qb-runtime 1.2.0
-/dev/aries0         Aries
-```
-
-정리:
-```bash
-kubectl delete -f deploy/test-pod.yaml
-```
-
-## 워크로드에서 NPU 사용
-
-Pod이 `mobilint.com/npu` 리소스를 요청하면 컨테이너에 다음이 주입됩니다:
+스케줄러가 NPU 여유가 있는 노드에 Pod을 배치하고, 플러그인이 컨테이너에 다음을 주입합니다:
 
 - `/dev/aries<N>` — Allocate된 NPU의 character device (rw)
 - `MOBILINT_VISIBLE_DEVICES=aries<N>[,aries<M>...]` — 사용 가능한 NPU id 목록
+
+```bash
+kubectl logs npu-example
+# MOBILINT_VISIBLE_DEVICES=aries0
+# crw-rw-rw- 1 root root 503, 0 ... /dev/aries0
+```
+
+> 실제 추론을 돌리려면 워크로드 이미지에 Mobilint SDK/런타임이 포함돼야 합니다 — [docs.mobilint.com](https://docs.mobilint.com) 참고.
 
 ## 제거
 
 ### 플러그인 및 노드라벨 제거
 ```bash
+# Helm
+helm uninstall mobilint-device-plugin -n kube-system
+# 또는 Helm 없이
 kubectl delete -f deploy/daemonset.yaml
+
 kubectl label node <NODE_NAME> mobilint.com/npu.present-
 ```

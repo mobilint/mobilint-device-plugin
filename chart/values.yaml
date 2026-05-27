@@ -1,0 +1,66 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/mobilint/mobilint-device-plugin
+  # Overrides the image tag (defaults to .Chart.AppVersion).
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# Host path of the kubelet device-plugins socket directory.
+# Override if your distro uses a different path (e.g. /var/lib/k0s/kubelet/device-plugins).
+kubeletDevicePluginsPath: /var/lib/kubelet/device-plugins
+
+priorityClassName: system-node-critical
+
+updateStrategy:
+  type: RollingUpdate
+
+# Auto-label NPU nodes via Node Feature Discovery instead of manual `kubectl label`.
+# Requires NFD in the cluster with the mobilint.com label namespace allowed
+# (nfd-master flag: -extra-label-ns=mobilint.com). Leave disabled to label nodes manually.
+nodeFeatureDiscovery:
+  enabled: false
+
+nodeSelector:
+  mobilint.com/npu.present: "true"
+
+tolerations:
+  - operator: Exists
+
+affinity: {}
+
+podAnnotations: {}
+podLabels: {}
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+# Device cgroup access requires privileged mode on most runtimes.
+securityContext:
+  privileged: true
+  readOnlyRootFilesystem: true
+
+metrics:
+  # Headless Service exposing the plugin's :9400 /metrics endpoint.
+  # Required for serviceMonitor.
+  service:
+    enabled: false
+  serviceMonitor:
+    # Requires prometheus-operator CRDs and metrics.service.enabled=true.
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+networkPolicy:
+  # Allow Prometheus to scrape :9400 from another namespace.
+  enabled: false
+  prometheusNamespace: monitoring
