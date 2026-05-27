@@ -1,0 +1,22 @@
+{{- if .Values.nodeFeatureDiscovery.enabled -}}
+# Requires Node Feature Discovery (NFD) in the cluster, and nfd-master must allow
+# the mobilint.com label namespace (flag: -extra-label-ns=mobilint.com).
+apiVersion: nfd.k8s-sigs.io/v1alpha1
+kind: NodeFeatureRule
+metadata:
+  name: {{ include "mobilint-device-plugin.fullname" . }}
+  labels:
+    {{- include "mobilint-device-plugin.labels" . | nindent 4 }}
+spec:
+  rules:
+    - name: mobilint-npu
+      labels:
+        mobilint.com/npu.present: "true"
+      matchFeatures:
+        - feature: pci.device
+          matchExpressions:
+            vendor:
+              op: In
+              value:
+                - "209f"
+{{- end }}

@@ -1,0 +1,26 @@
+name: Verify generated manifests
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.2.0
+
+      - name: Regenerate deploy/ from chart
+        run: make manifests
+
+      - name: Fail if deploy/ is out of date
+        run: |
+          if ! git diff --exit-code deploy/; then
+            echo "::error::deploy/ is out of sync with chart/. Run 'make manifests' and commit the result."
+            exit 1
+          fi
