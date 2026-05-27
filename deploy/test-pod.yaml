@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mobilint-npu-test
+spec:
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 0
+  containers:
+    - name: test
+      image: mobilint-npu-test:v0.1.0
+      imagePullPolicy: IfNotPresent
+      resources:
+        limits:
+          mobilint.com/npu: 1

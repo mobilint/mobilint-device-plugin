@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: mobilint-device-plugin
+  namespace: kube-system
+  labels:
+    app: mobilint-device-plugin
+    app.kubernetes.io/name: mobilint-device-plugin
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/component: device-plugin
+    app.kubernetes.io/part-of: mobilint-platform
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  selector:
+    matchLabels:
+      app: mobilint-device-plugin
+  template:
+    metadata:
+      labels:
+        app: mobilint-device-plugin
+        app.kubernetes.io/name: mobilint-device-plugin
+        app.kubernetes.io/version: "0.1.0"
+        app.kubernetes.io/component: device-plugin
+        app.kubernetes.io/part-of: mobilint-platform
+        app.kubernetes.io/managed-by: kubectl
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists
+      nodeSelector:
+        mobilint.com/npu.present: "true"
+      containers:
+        - name: mobilint-device-plugin
+          image: ghcr.io/mobilint/mobilint-device-plugin:v0.1.0 # XXX: pin by digest when production
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: true
+          ports:
+            - name: metrics
+              containerPort: 9400
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: metrics
+            periodSeconds: 5
+            failureThreshold: 1
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+            type: Directory
