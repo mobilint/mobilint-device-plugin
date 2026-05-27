@@ -1,13 +1,16 @@
 name: Publish Helm chart to GHCR
 
-# Publishes the chart whenever chart/ changes on master, but only if the
+# Publishes the chart whenever chart/ changes on main, but only if the
 # chart version is not already in the registry. Bump Chart.yaml `version`
 # for chart/template changes; update `appVersion` only when the default
 # image tag changes. Existing chart versions are never overwritten.
 on:
   push:
-    branches: [master]
-    paths: ['chart/**']
+    branches: [main]
+    paths:
+      - 'chart/**'
+      - '.github/workflows/release-chart.yml'
+  workflow_dispatch:
 
 jobs:
   publish-chart:
