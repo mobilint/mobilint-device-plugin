@@ -68,7 +68,7 @@ helm install mobilint-device-plugin oci://ghcr.io/mobilint/charts/mobilint-devic
 ### 1) Plugin Pod Ready 여부
 
 ```bash
-kubectl -n kube-system get pods -l app=mobilint-device-plugin -o wide
+kubectl -n kube-system get pods -l app.kubernetes.io/name=mobilint-device-plugin -o wide
 ```
 NPU 라벨이 붙은 노드 수만큼 Pod이 `READY 1/1`로 떠야 합니다.
 
