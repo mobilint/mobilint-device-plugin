@@ -68,7 +68,7 @@ helm install mobilint-device-plugin oci://ghcr.io/mobilint/charts/mobilint-devic
 ### 1) Plugin Pod readiness
 
 ```bash
-kubectl -n kube-system get pods -l app=mobilint-device-plugin -o wide
+kubectl -n kube-system get pods -l app.kubernetes.io/name=mobilint-device-plugin -o wide
 ```
 You should see one `READY 1/1` Pod per labeled NPU node.
 
