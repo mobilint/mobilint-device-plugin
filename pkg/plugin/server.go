@@ -32,6 +32,10 @@ func (p *MobilintDevicePlugin) Start() error {
 	p.setDevices(devices)
 	klog.Infof("discovered devices: %s", deviceSignature(devices))
 
+	if err := writeCDISpec(config.CDISpecDir, devices); err != nil {
+		return err
+	}
+
 	p.server = grpc.NewServer()
 	pluginapi.RegisterDevicePluginServer(p.server, p)
 
@@ -167,6 +171,9 @@ func (p *MobilintDevicePlugin) refreshDevices() {
 
 	if changed {
 		klog.Infof("device list changed: %s", newSig)
+		if err := writeCDISpec(config.CDISpecDir, devices); err != nil {
+			klog.Errorf("failed to update CDI spec: %v", err)
+		}
 		select {
 		case p.healthCh <- struct{}{}:
 		default:
