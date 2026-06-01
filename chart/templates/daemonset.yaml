@@ -63,8 +63,14 @@ spec:
           volumeMounts:
             - name: device-plugin
               mountPath: /var/lib/kubelet/device-plugins
+            - name: cdi
+              mountPath: /var/run/cdi
       volumes:
         - name: device-plugin
           hostPath:
             path: {{ .Values.kubeletDevicePluginsPath }}
             type: Directory
+        - name: cdi
+          hostPath:
+            path: /var/run/cdi
+            type: DirectoryOrCreate

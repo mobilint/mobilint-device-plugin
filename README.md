@@ -2,17 +2,15 @@
 
 **English** | [한국어](README.ko.md)
 
-A Kubernetes Device Plugin that exposes Mobilint NPUs (`/dev/aries[0-9]*`) as the `mobilint.com/npu` resource.
-It runs as a DaemonSet, one Pod per NPU node, registers the NPU count with kubelet,
-and on Pod allocation injects the matching `/dev/ariesN` device node and the `MOBILINT_VISIBLE_DEVICES` environment variable into the container.
+A Kubernetes device plugin that exposes Mobilint NPUs (`/dev/aries[0-9]*`) as the `mobilint.com/npu` resource.
 
 ## System Requirements
 
 | Item | Requirement |
 |---|---|
-| Kubernetes | A version that supports the device plugin v1beta1 API |
+| Kubernetes | 1.31+ |
 | Node OS | Linux (Ubuntu recommended) |
-| Container runtime | A CRI runtime with device cgroup support |
+| Container runtime | A CDI-enabled CRI runtime: containerd ≥ 1.7 or CRI-O ≥ 1.23 |
 | Kernel driver | Aries driver |
 
 On every node with an NPU card, the following must hold:
@@ -22,6 +20,8 @@ ls /dev/aries*               # device nodes exist
 ```
 
 If the driver is not installed, follow the "Installing driver" section on [docs.mobilint.com](https://docs.mobilint.com) first.
+
+This project injects device nodes through the Container Device Interface (CDI), so CDI must be enabled on the container runtime.
 
 ## Installation
 
@@ -37,7 +37,7 @@ On larger or autoscaled clusters you can skip manual labeling and let Node Featu
 **With Helm (recommended):**
 ```bash
 helm install mobilint-device-plugin \
-  oci://ghcr.io/mobilint/charts/mobilint-device-plugin --version 0.1.0 -n kube-system
+  oci://ghcr.io/mobilint/charts/mobilint-device-plugin --version 0.2.0 -n kube-system
 ```
 See [chart/values.yaml](chart/values.yaml) for configurable options (image tag, metrics Service/ServiceMonitor, NetworkPolicy, kubelet path, etc.). From a local checkout, replace the `oci://` URL with `./chart`.
 
@@ -60,7 +60,7 @@ helm install nfd nfd/node-feature-discovery -n node-feature-discovery --create-n
 
 # 2. Enable auto-labeling in this chart
 helm install mobilint-device-plugin oci://ghcr.io/mobilint/charts/mobilint-device-plugin \
-  --version 0.1.0 -n kube-system --set nodeFeatureDiscovery.enabled=true
+  --version 0.2.0 -n kube-system --set nodeFeatureDiscovery.enabled=true
 ```
 
 ## Verification
@@ -92,20 +92,14 @@ spec:
   containers:
     - name: app
       image: ubuntu:latest
-      command: ["sh", "-c", "echo $MOBILINT_VISIBLE_DEVICES; ls -l /dev/aries*; sleep infinity"]
+      command: ["sh", "-c", "ls -l /dev/aries*; sleep infinity"]
       resources:
         limits:
           mobilint.com/npu: 1
 ```
 
-The scheduler places the Pod on a node with a free NPU, and the plugin injects into the container:
-
-- `/dev/aries<N>` — the allocated NPU's character device (rw)
-- `MOBILINT_VISIBLE_DEVICES=aries<N>[,aries<M>...]` — comma-separated list of usable NPU ids
-
 ```bash
 kubectl logs npu-example
-# MOBILINT_VISIBLE_DEVICES=aries0
 # crw-rw-rw- 1 root root 503, 0 ... /dev/aries0
 ```
 
@@ -122,3 +116,7 @@ kubectl delete -f deploy/daemonset.yaml
 
 kubectl label node <NODE_NAME> mobilint.com/npu.present-
 ```
+
+## License
+
+[Apache License 2.0](LICENSE) © Mobilint, Inc.

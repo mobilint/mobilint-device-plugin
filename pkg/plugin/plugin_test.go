@@ -2,11 +2,14 @@ package plugin
 
 import (
 	"context"
-	"strings"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 	"mobilint-device-plugin/pkg/config"
+	"tags.cncf.io/container-device-interface/specs-go"
 )
 
 func newWithDevices(devices []*pluginapi.Device) *MobilintDevicePlugin {
@@ -70,22 +73,68 @@ func TestAllocateHealthyResponse(t *testing.T) {
 		t.Fatalf("ContainerResponses=%d, want 1", len(resp.ContainerResponses))
 	}
 	cr := resp.ContainerResponses[0]
-	if len(cr.Devices) != 2 {
-		t.Errorf("Devices=%d, want 2", len(cr.Devices))
+	// Pure CDI: device injection is delegated to the CDI spec, so the response
+	// carries only CDI device names — no legacy Devices and no env.
+	if len(cr.Devices) != 0 {
+		t.Errorf("Devices=%d, want 0 (CDI handles injection)", len(cr.Devices))
 	}
-	for _, d := range cr.Devices {
-		if d.HostPath != d.ContainerPath {
-			t.Errorf("HostPath %q != ContainerPath %q", d.HostPath, d.ContainerPath)
-		}
-		if !strings.HasPrefix(d.HostPath, "/dev/") {
-			t.Errorf("HostPath %q missing /dev/ prefix", d.HostPath)
-		}
-		if d.Permissions != "rw" {
-			t.Errorf("Permissions=%q, want rw", d.Permissions)
+	if len(cr.Envs) != 0 {
+		t.Errorf("Envs=%v, want none", cr.Envs)
+	}
+	want := []string{"mobilint.com/npu=aries0", "mobilint.com/npu=aries1"}
+	if len(cr.CdiDevices) != len(want) {
+		t.Fatalf("CdiDevices=%d, want %d", len(cr.CdiDevices), len(want))
+	}
+	for i, w := range want {
+		if got := cr.CdiDevices[i].Name; got != w {
+			t.Errorf("CdiDevices[%d]=%q, want %q", i, got, w)
 		}
 	}
-	if got := cr.Envs[config.VisibleDevicesEnv]; got != "aries0,aries1" {
-		t.Errorf("%s=%q, want aries0,aries1", config.VisibleDevicesEnv, got)
+}
+
+func TestWriteCDISpec(t *testing.T) {
+	dir := t.TempDir()
+	devices := []*pluginapi.Device{
+		{ID: "aries0", Health: pluginapi.Healthy},
+		{ID: "aries1", Health: pluginapi.Healthy},
+	}
+
+	if err := writeCDISpec(dir, devices); err != nil {
+		t.Fatalf("writeCDISpec: %v", err)
+	}
+
+	matches, _ := filepath.Glob(filepath.Join(dir, "*.json"))
+	if len(matches) != 1 {
+		t.Fatalf("expected 1 spec file, found %v", matches)
+	}
+
+	data, err := os.ReadFile(matches[0])
+	if err != nil {
+		t.Fatalf("read spec: %v", err)
+	}
+	var spec specs.Spec
+	if err := json.Unmarshal(data, &spec); err != nil {
+		t.Fatalf("unmarshal spec: %v", err)
+	}
+
+	if spec.Kind != config.ResourceName {
+		t.Errorf("kind=%q, want %q", spec.Kind, config.ResourceName)
+	}
+	if spec.Version == "" {
+		t.Error("cdiVersion is empty")
+	}
+	if len(spec.Devices) != 2 {
+		t.Fatalf("devices=%d, want 2", len(spec.Devices))
+	}
+	for i, want := range []string{"aries0", "aries1"} {
+		d := spec.Devices[i]
+		if d.Name != want {
+			t.Errorf("devices[%d].name=%q, want %q", i, d.Name, want)
+		}
+		nodes := d.ContainerEdits.DeviceNodes
+		if len(nodes) != 1 || nodes[0].Path != "/dev/"+want || nodes[0].Permissions != "rw" {
+			t.Errorf("devices[%d] deviceNodes=%+v, want /dev/%s rw", i, nodes, want)
+		}
 	}
 }
 

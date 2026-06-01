@@ -1,10 +1,16 @@
 package config
 
 const (
-	ResourceName      = "mobilint.com/npu"
-	DevicePattern     = "/dev/aries[0-9]*"
-	PluginSocketName  = "mobilint.sock"
-	VisibleDevicesEnv = "MOBILINT_VISIBLE_DEVICES"
+	CDIVendor    = "mobilint.com"
+	CDIClass     = "npu"
+	ResourceName = CDIVendor + "/" + CDIClass
+
+	// Host directory for dynamically generated CDI specs. /var/run/cdi is the
+	// CDI standard location for transient/generated specs across runtimes.
+	CDISpecDir = "/var/run/cdi"
+
+	DevicePattern    = "/dev/aries[0-9]*"
+	PluginSocketName = "mobilint.sock"
 
 	DiscoveryIntervalSeconds = 5
 	RegisterTimeoutSeconds   = 5

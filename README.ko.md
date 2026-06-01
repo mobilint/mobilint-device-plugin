@@ -2,26 +2,26 @@
 
 [English](README.md) | **한국어**
 
-Kubernetes에서 Mobilint NPU(`/dev/aries[0-9]*`)를 `mobilint.com/npu` 리소스로 노출하는 Device Plugin입니다.  
-DaemonSet으로 NPU 노드마다 한 개씩 동작하며, kubelet에 NPU 개수를 등록하고,  
-Pod이 요청 시 `/dev/ariesN` 디바이스 노드와 `MOBILINT_VISIBLE_DEVICES` 환경변수를 컨테이너에 주입합니다.
+Kubernetes에서 Mobilint NPU(`/dev/aries[0-9]*`)를 `mobilint.com/npu` 리소스로 노출하는 Device Plugin입니다.
 
 ## 시스템 요구사항
 
 | 항목 | 요구사항 |
 |---|---|
-| Kubernetes | device plugin v1beta1 API를 지원하는 버전 |
+| Kubernetes | 1.31+ |
 | 노드 OS | Linux (Ubuntu 권장) |
-| 컨테이너 런타임 | device cgroup 지원되는 CRI 런타임 |
+| 컨테이너 런타임 | CDI 지원 CRI 런타임: containerd ≥ 1.7 또는 CRI-O ≥ 1.23 |
 | 커널 드라이버 | Aries 드라이버 |
 
 NPU 카드가 박힌 노드에서 다음이 모두 만족돼야 합니다:
 ```bash
 lsmod | grep aries           # 드라이버 모듈 로드 확인
-ls /dev/aries*               # 디바이스 노드 존재 확인
+ls /dev/aries*               # 디바이스 노드 인식 확인
 ```
 
 드라이버가 설치되어있지 않은 경우 [docs.mobilint.com](https://docs.mobilint.com)의 "Installing driver" 섹션을 참고해서 설치하세요.
+
+이 프로젝트는 CDI(Container Device Interface)로 디바이스 노드를 주입하므로, 컨테이너 런타임에 CDI가 활성화돼 있어야 합니다.
 
 ## 설치
 
@@ -37,7 +37,7 @@ kubectl label node <NODE_NAME> mobilint.com/npu.present=true --overwrite
 **Helm 사용 (권장):**
 ```bash
 helm install mobilint-device-plugin \
-  oci://ghcr.io/mobilint/charts/mobilint-device-plugin --version 0.1.0 -n kube-system
+  oci://ghcr.io/mobilint/charts/mobilint-device-plugin --version 0.2.0 -n kube-system
 ```
 설정 가능한 옵션(이미지 태그, metrics Service/ServiceMonitor, NetworkPolicy, kubelet 경로 등)은 [chart/values.yaml](chart/values.yaml) 참고. 로컬 체크아웃에서는 `oci://` URL 대신 `./chart`를 쓰면 됩니다.
 
@@ -60,7 +60,7 @@ helm install nfd nfd/node-feature-discovery -n node-feature-discovery --create-n
 
 # 2. 이 차트에서 자동 라벨링 켜기
 helm install mobilint-device-plugin oci://ghcr.io/mobilint/charts/mobilint-device-plugin \
-  --version 0.1.0 -n kube-system --set nodeFeatureDiscovery.enabled=true
+  --version 0.2.0 -n kube-system --set nodeFeatureDiscovery.enabled=true
 ```
 
 ## 검증
@@ -92,20 +92,14 @@ spec:
   containers:
     - name: app
       image: ubuntu:latest
-      command: ["sh", "-c", "echo $MOBILINT_VISIBLE_DEVICES; ls -l /dev/aries*; sleep infinity"]
+      command: ["sh", "-c", "ls -l /dev/aries*; sleep infinity"]
       resources:
         limits:
           mobilint.com/npu: 1
 ```
 
-스케줄러가 NPU 여유가 있는 노드에 Pod을 배치하고, 플러그인이 컨테이너에 다음을 주입합니다:
-
-- `/dev/aries<N>` — Allocate된 NPU의 character device (rw)
-- `MOBILINT_VISIBLE_DEVICES=aries<N>[,aries<M>...]` — 사용 가능한 NPU id 목록
-
 ```bash
 kubectl logs npu-example
-# MOBILINT_VISIBLE_DEVICES=aries0
 # crw-rw-rw- 1 root root 503, 0 ... /dev/aries0
 ```
 
@@ -122,3 +116,7 @@ kubectl delete -f deploy/daemonset.yaml
 
 kubectl label node <NODE_NAME> mobilint.com/npu.present-
 ```
+
+## 라이선스
+
+[Apache License 2.0](LICENSE) © Mobilint, Inc.
