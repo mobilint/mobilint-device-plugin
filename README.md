@@ -111,8 +111,8 @@ kubectl logs npu-example
 ```bash
 # Helm
 helm uninstall mobilint-device-plugin -n kube-system
-# or, without Helm
-kubectl delete -f deploy/daemonset.yaml
+# if installed from the raw manifest
+kubectl delete -f https://raw.githubusercontent.com/mobilint/mobilint-device-plugin/master/deploy/daemonset.yaml
 
 kubectl label node <NODE_NAME> mobilint.com/npu.present-
 ```
