@@ -64,6 +64,16 @@ spec:
           mobilint.com/npu: 1
 ```
 
+## Metrics
+
+The plugin serves a Prometheus metrics endpoint and a readiness probe on `:9400`:
+
+- `GET /metrics` — per-device NPU telemetry in Prometheus text format
+- `GET /process` — per-process detail (pid, memory, utilization) as JSON
+- `GET /readyz` — readiness probe (200 once registered with kubelet)
+
+For detailed metric information, please refer to https://docs.mobilint.com/latest/en/kubernetes_device_plugin.html
+
 ## License
 
 Apache License 2.0 © Mobilint, Inc.

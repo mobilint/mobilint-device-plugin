@@ -88,12 +88,8 @@ func (p *MobilintDevicePlugin) Register(ctx context.Context) error {
 	defer cancel()
 
 	conn, err := grpc.NewClient(
-		"passthrough:"+pluginapi.KubeletSocket,
+		"unix://"+pluginapi.KubeletSocket,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
-			var d net.Dialer
-			return d.DialContext(ctx, "unix", addr)
-		}),
 	)
 	if err != nil {
 		return err

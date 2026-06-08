@@ -7,10 +7,10 @@ metadata:
   name: mobilint-device-plugin
   namespace: kube-system
   labels:
-    helm.sh/chart: mobilint-device-plugin-0.2.0
+    helm.sh/chart: mobilint-device-plugin-1.0.0
     app.kubernetes.io/name: mobilint-device-plugin
     app.kubernetes.io/instance: mobilint-device-plugin
-    app.kubernetes.io/version: "v0.2.0"
+    app.kubernetes.io/version: "v1.0.0"
     app.kubernetes.io/component: device-plugin
     app.kubernetes.io/part-of: mobilint-platform
     app.kubernetes.io/managed-by: Helm
@@ -34,7 +34,7 @@ spec:
         mobilint.com/npu.present: "true"
       containers:
         - name: mobilint-device-plugin
-          image: "ghcr.io/mobilint/mobilint-device-plugin:v0.2.0"
+          image: "ghcr.io/mobilint/mobilint-device-plugin:v1.0.0"
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true

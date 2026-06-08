@@ -64,6 +64,16 @@ spec:
           mobilint.com/npu: 1
 ```
 
+## 메트릭
+
+플러그인은 `:9400`에서 Prometheus 메트릭 엔드포인트와 readiness probe를 제공합니다.
+
+- `GET /metrics` — 디바이스별 NPU 텔레메트리 (Prometheus 텍스트 포맷)
+- `GET /process` — 프로세스별 상세 (pid, 메모리, 사용률) JSON
+- `GET /readyz` — readiness probe (kubelet 등록 완료 시 200)
+
+상세 메트릭 정보는 https://docs.mobilint.com/latest/kr/kubernetes_device_plugin.html 를 참고하시기 바랍니다.
+
 ## License
 
 Apache License 2.0 © Mobilint, Inc.
