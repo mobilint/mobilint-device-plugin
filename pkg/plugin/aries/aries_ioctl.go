@@ -3,7 +3,6 @@ package aries
 import (
 	"encoding/binary"
 	"fmt"
-	"os"
 	"unsafe"
 
 	"golang.org/x/sys/unix"
@@ -335,7 +334,6 @@ func readProcesses(fd int, npuTimes map[int32][]int64, intervals []int64) []Proc
 	}
 	defer ioctlNoArg(fd, ariesIOCReleaseSnapshot)
 
-	self := int32(os.Getpid()) // Skip our own fd
 	var out []ProcessInfo
 	for {
 		var r ariesSnapshotResult
@@ -348,7 +346,7 @@ func readProcesses(fd int, npuTimes map[int32][]int64, intervals []int64) []Proc
 		if errno != 0 || r.EOS {
 			break
 		}
-		if r.Info.PID <= 0 || r.Info.PID == self {
+		if r.Info.PID <= 0 {
 			continue
 		}
 		p := ProcessInfo{
@@ -363,6 +361,11 @@ func readProcesses(fd int, npuTimes map[int32][]int64, intervals []int64) []Proc
 			if t, ok := npuTimes[p.PID]; ok {
 				p.NPUTimeUs += t[ci]
 			}
+		}
+		// Hide idle openers (memory 0 and utilization 0), including our own
+		// telemetry read which opens the device but does no NPU work.
+		if p.MemoryUsedBytes == 0 && p.NPUTimeUs == 0 {
+			continue
 		}
 		out = append(out, p)
 	}
