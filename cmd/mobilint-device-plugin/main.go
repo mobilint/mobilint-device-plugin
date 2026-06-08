@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,6 +20,7 @@ import (
 
 func main() {
 	klog.InitFlags(nil)
+	flag.Parse()
 	defer klog.Flush()
 
 	socket := filepath.Join(pluginapi.DevicePluginPath, config.PluginSocketName)
@@ -112,10 +114,7 @@ func runRegister(ctx context.Context, stop context.CancelFunc, p *plugin.Mobilin
 	}
 }
 
-// registerWithBackoff retries Register() forever with exponential backoff,
-// returning only when ctx is canceled. The Pod's /readyz reflects current
-// registration state, so a never-ready Pod surfaces as "NotReady" instead
-// of crashing into CrashLoopBackoff.
+// Retry registration forever with exponential backoff; stay NotReady instead of crashing.
 func registerWithBackoff(ctx context.Context, p *plugin.MobilintDevicePlugin) {
 	backoff := time.Duration(config.RegisterBackoffInitialSeconds) * time.Second
 	maxBackoff := time.Duration(config.RegisterBackoffMaxSeconds) * time.Second
