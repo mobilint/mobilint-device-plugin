@@ -3,9 +3,9 @@ name: mobilint-device-plugin
 description: Kubernetes device plugin that exposes Mobilint NPUs as the mobilint.com/npu resource.
 type: application
 # Chart package version. Bump for chart/template/default value changes.
-version: 1.0.1
+version: 1.1.0
 # Default application image tag. Update when publishing a new image.
-appVersion: "v1.0.1"
+appVersion: "v1.1.0"
 kubeVersion: ">=1.31.0-0"
 keywords:
   - device-plugin

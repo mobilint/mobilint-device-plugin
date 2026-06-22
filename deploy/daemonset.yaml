@@ -1,5 +1,20 @@
 # Generated from chart by make manifests. DO NOT EDIT.
 ---
+# Source: mobilint-device-plugin/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mobilint-device-plugin
+  namespace: kube-system
+  labels:
+    helm.sh/chart: mobilint-device-plugin-1.1.0
+    app.kubernetes.io/name: mobilint-device-plugin
+    app.kubernetes.io/instance: mobilint-device-plugin
+    app.kubernetes.io/version: "v1.1.0"
+    app.kubernetes.io/component: device-plugin
+    app.kubernetes.io/part-of: mobilint-platform
+    app.kubernetes.io/managed-by: Helm
+---
 # Source: mobilint-device-plugin/templates/daemonset.yaml
 apiVersion: apps/v1
 kind: DaemonSet
@@ -7,10 +22,10 @@ metadata:
   name: mobilint-device-plugin
   namespace: kube-system
   labels:
-    helm.sh/chart: mobilint-device-plugin-1.0.1
+    helm.sh/chart: mobilint-device-plugin-1.1.0
     app.kubernetes.io/name: mobilint-device-plugin
     app.kubernetes.io/instance: mobilint-device-plugin
-    app.kubernetes.io/version: "v1.0.1"
+    app.kubernetes.io/version: "v1.1.0"
     app.kubernetes.io/component: device-plugin
     app.kubernetes.io/part-of: mobilint-platform
     app.kubernetes.io/managed-by: Helm
@@ -27,6 +42,7 @@ spec:
         app.kubernetes.io/name: mobilint-device-plugin
         app.kubernetes.io/instance: mobilint-device-plugin
     spec:
+      serviceAccountName: mobilint-device-plugin
       priorityClassName: system-node-critical
       tolerations:
         - operator: Exists
@@ -34,7 +50,7 @@ spec:
         mobilint.com/npu.present: "true"
       containers:
         - name: mobilint-device-plugin
-          image: "ghcr.io/mobilint/mobilint-device-plugin:v1.0.1"
+          image: "ghcr.io/mobilint/mobilint-device-plugin:v1.1.0"
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true

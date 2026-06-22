@@ -11,7 +11,10 @@ HEADER  := \# Generated from $(CHART) by 'make manifests'. DO NOT EDIT.
 .PHONY: manifests
 manifests:
 	@echo '$(HEADER)' > deploy/daemonset.yaml
+	$(HELM) template $(RELEASE) $(CHART) -n $(NS) -s templates/serviceaccount.yaml >> deploy/daemonset.yaml
 	$(HELM) template $(RELEASE) $(CHART) -n $(NS) -s templates/daemonset.yaml >> deploy/daemonset.yaml
+	@echo '$(HEADER)' > deploy/scc.yaml
+	$(HELM) template $(RELEASE) $(CHART) -n $(NS) --set openShift.enabled=true -s templates/scc.yaml >> deploy/scc.yaml
 	@echo '$(HEADER)' > deploy/networkpolicy.yaml
 	$(HELM) template $(RELEASE) $(CHART) -n $(NS) --set networkPolicy.enabled=true -s templates/networkpolicy.yaml >> deploy/networkpolicy.yaml
 	@echo '$(HEADER)' > deploy/nodefeaturerule.yaml

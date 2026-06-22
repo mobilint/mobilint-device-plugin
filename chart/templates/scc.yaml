@@ -1,0 +1,19 @@
+{{- if .Values.openShift.enabled -}}
+# OpenShift/MicroShift: allow this SA to use the privileged SCC.
+# Required because the plugin runs privileged and accesses /dev/aries* via hostPath.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "mobilint-device-plugin.fullname" . }}-scc-privileged
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mobilint-device-plugin.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "mobilint-device-plugin.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
