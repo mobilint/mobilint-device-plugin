@@ -5,6 +5,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"mobilint-device-plugin/pkg/config"
+
 	"google.golang.org/grpc"
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
 )
@@ -13,14 +15,18 @@ type MobilintDevicePlugin struct {
 	pluginapi.UnimplementedDevicePluginServer
 
 	socket    string
-	server    *grpc.Server
+	cdiDir    string
 	serverErr chan error
+
+	lifecycleMu   sync.Mutex
+	server        *grpc.Server
+	monitorCancel context.CancelFunc
+	serveStop     chan struct{}
 
 	mu      sync.RWMutex
 	devices []*pluginapi.Device
 
-	healthCh      chan struct{}
-	monitorCancel context.CancelFunc
+	healthCh chan struct{}
 
 	registered atomic.Bool
 }
@@ -28,6 +34,7 @@ type MobilintDevicePlugin struct {
 func New(socket string) *MobilintDevicePlugin {
 	return &MobilintDevicePlugin{
 		socket:    socket,
+		cdiDir:    config.CDISpecDir,
 		serverErr: make(chan error, 1),
 		healthCh:  make(chan struct{}, 1),
 	}

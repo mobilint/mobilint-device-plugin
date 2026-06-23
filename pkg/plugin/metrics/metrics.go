@@ -73,11 +73,11 @@ func handleMetrics(w http.ResponseWriter, r *http.Request) {
 	emitMetric(w, readings, "mobilint_npu_clock_noc_hz", "NoC clock in Hz.",
 		func(s aries.Reading) int32 { return s.ClockNOCHz })
 	emitMetric(w, readings, "mobilint_npu_power_watts", "Total power in watts.",
-		func(s aries.Reading) float64 { return s.PowerTotal / 1000 })
+		func(s aries.Reading) float64 { return toUnit(s.PowerTotal) })
 	emitMetric(w, readings, "mobilint_npu_current_amperes", "Total current in amperes.",
-		func(s aries.Reading) float64 { return s.CurrentTotal / 1000 })
+		func(s aries.Reading) float64 { return toUnit(s.CurrentTotal) })
 	emitMetric(w, readings, "mobilint_npu_voltage_volts", "Total supply voltage in volts.",
-		func(s aries.Reading) float64 { return s.VoltageTotal / 1000 })
+		func(s aries.Reading) float64 { return toUnit(s.VoltageTotal) })
 	emitMetric(w, readings, "mobilint_npu_fan_duty", "Fan duty cycle from the ARIES monitor.",
 		func(s aries.Reading) int32 { return s.FanDuty })
 	emitMetric(w, readings, "mobilint_npu_fd_count", "Open fd count for this device from ARIES_IOC_GET_FD_COUNT.",
@@ -149,6 +149,13 @@ func emitInfoMetric(w io.Writer, readings []deviceReading) {
 	}
 }
 
+func toUnit(raw float64) float64 {
+	if raw == -1 {
+		return -1
+	}
+	return raw / 1000
+}
+
 func emitMetric[T int32 | int64 | uint64 | float64](w io.Writer, readings []deviceReading, name, help string, get func(aries.Reading) T) {
 	fmt.Fprintf(w, "# HELP %s %s\n# TYPE %s gauge\n", name, help, name)
 	for _, x := range readings {
@@ -171,9 +178,6 @@ type deviceProcessesJSON struct {
 	Processes []processJSON `json:"processes"`
 }
 
-// handleProcesses serves current per-process detail as JSON, off the Prometheus
-// path, so per-pid data is available on demand without the time-series
-// cardinality that pid labels would add to /metrics.
 func handleProcesses(w http.ResponseWriter, r *http.Request) {
 	out := make([]deviceProcessesJSON, 0)
 	for _, x := range collect() {

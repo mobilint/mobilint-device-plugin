@@ -98,10 +98,14 @@ func runRegister(ctx context.Context, stop context.CancelFunc, p *plugin.Mobilin
 				return
 			}
 
-			// When kubelet socket is recreated, re-register the plugin.
 			if event.Op&fsnotify.Create != 0 && filepath.Base(event.Name) == kubeletSock {
-				klog.Infof("kubelet socket recreated, re-registering")
+				klog.Infof("kubelet socket recreated, restarting plugin server and re-registering")
 				p.SetRegistered(false)
+				if err := p.Restart(); err != nil {
+					klog.Errorf("failed to restart plugin server: %v", err)
+					stop()
+					return
+				}
 				registerWithBackoff(ctx, p)
 			}
 

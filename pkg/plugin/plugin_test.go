@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	pluginapi "k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1"
@@ -135,6 +136,52 @@ func TestWriteCDISpec(t *testing.T) {
 		if len(nodes) != 1 || nodes[0].Path != "/dev/"+want || nodes[0].Permissions != "rw" {
 			t.Errorf("devices[%d] deviceNodes=%+v, want /dev/%s rw", i, nodes, want)
 		}
+	}
+}
+
+func TestLifecycleRace(t *testing.T) {
+	p := New(filepath.Join(t.TempDir(), "plugin.sock"))
+	p.cdiDir = t.TempDir()
+	if err := p.Start(); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); _ = p.Restart() }()
+	go func() { defer wg.Done(); p.Stop() }()
+	wg.Wait()
+}
+
+func TestNumaNodeFromSysfs(t *testing.T) {
+	// numa_node lives on the PCI-function ancestor, not the leaf char device.
+	pci := filepath.Join(t.TempDir(), "0000:01:00.0")
+	leaf := filepath.Join(pci, "aries", "aries0")
+	if err := os.MkdirAll(leaf, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pci, "numa_node"), []byte("1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := numaNodeFromSysfs(leaf); got != 1 {
+		t.Errorf("numaNodeFromSysfs=%d, want 1", got)
+	}
+
+	// Single-NUMA systems report -1; must be passed through (caller omits it).
+	noaff := filepath.Join(t.TempDir(), "0000:02:00.0")
+	if err := os.MkdirAll(noaff, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(noaff, "numa_node"), []byte("-1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := numaNodeFromSysfs(noaff); got != -1 {
+		t.Errorf("numaNodeFromSysfs(-1)=%d, want -1", got)
+	}
+
+	// No numa_node anywhere up the tree.
+	if got := numaNodeFromSysfs(t.TempDir()); got != -1 {
+		t.Errorf("numaNodeFromSysfs(missing)=%d, want -1", got)
 	}
 }
 

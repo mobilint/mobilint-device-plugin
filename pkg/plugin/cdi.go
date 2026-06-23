@@ -11,10 +11,6 @@ import (
 	"mobilint-device-plugin/pkg/config"
 )
 
-// writeCDISpec generates the CDI spec describing every discovered NPU and writes
-// it into dir (the host CDI directory, e.g. /var/run/cdi). The CRI runtime reads
-// this spec to inject /dev/ariesN when Allocate returns the matching CDI device
-// name (mobilint.com/npu=ariesN).
 func writeCDISpec(dir string, devices []*pluginapi.Device) error {
 	cdiDevices := make([]specs.Device, 0, len(devices))
 	for _, d := range devices {

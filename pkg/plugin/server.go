@@ -32,16 +32,23 @@ func (p *MobilintDevicePlugin) Start() error {
 	p.setDevices(devices)
 	klog.Infof("discovered devices: %s", deviceSignature(devices))
 
-	if err := writeCDISpec(config.CDISpecDir, devices); err != nil {
+	if err := writeCDISpec(p.cdiDir, devices); err != nil {
 		return err
 	}
 
-	p.server = grpc.NewServer()
-	pluginapi.RegisterDevicePluginServer(p.server, p)
+	server := grpc.NewServer()
+	p.server = server
+	pluginapi.RegisterDevicePluginServer(server, p)
 
+	serveStop := make(chan struct{})
+	p.serveStop = serveStop
 	go func() {
-		err := p.server.Serve(listener)
-		p.serverErr <- err
+		err := server.Serve(listener)
+		select {
+		case <-serveStop: // intentional Stop/Restart, not a fatal error
+		default:
+			p.serverErr <- err
+		}
 	}()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -57,6 +64,9 @@ func (p *MobilintDevicePlugin) Err() <-chan error {
 }
 
 func (p *MobilintDevicePlugin) Stop() {
+	p.lifecycleMu.Lock()
+	defer p.lifecycleMu.Unlock()
+
 	if p.monitorCancel != nil {
 		p.monitorCancel()
 	}
@@ -81,6 +91,22 @@ func (p *MobilintDevicePlugin) Stop() {
 	if err != nil && !os.IsNotExist(err) {
 		klog.Errorf("failed to remove plugin socket %s: %v", p.socket, err)
 	}
+}
+
+func (p *MobilintDevicePlugin) Restart() error {
+	p.lifecycleMu.Lock()
+	defer p.lifecycleMu.Unlock()
+
+	if p.monitorCancel != nil {
+		p.monitorCancel()
+	}
+	if p.serveStop != nil {
+		close(p.serveStop)
+	}
+	if p.server != nil {
+		p.server.Stop()
+	}
+	return p.Start()
 }
 
 func (p *MobilintDevicePlugin) Register(ctx context.Context) error {
@@ -167,7 +193,7 @@ func (p *MobilintDevicePlugin) refreshDevices() {
 
 	if changed {
 		klog.Infof("device list changed: %s", newSig)
-		if err := writeCDISpec(config.CDISpecDir, devices); err != nil {
+		if err := writeCDISpec(p.cdiDir, devices); err != nil {
 			klog.Errorf("failed to update CDI spec: %v", err)
 		}
 		select {
